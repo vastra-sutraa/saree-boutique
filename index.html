@@ -100,13 +100,22 @@
     const backToTopBtn = document.getElementById("backToTopBtn");
 
     // 1. HELPER FUNCTION: Extracts clean raw integers out of price fields
+   // 1. HELPER FUNCTION: Extracts clean raw integers out of price fields safely
     function cleanPrice(priceString) {
         if (!priceString) return 0;
-        let cleaned = priceString.toString().split('.')[0];
+        
+        // Convert to string and force remove any currency symbols or commas first
+        let cleaned = priceString.toString().replace(/,/g, ''); 
+        
+        // If there is a decimal dot (e.g., 1500.00), split and drop the paisa decimals
+        cleaned = cleaned.split('.')[0];
+        
+        // Strip out any remaining non-numeric characters (like ₹ or spaces)
         cleaned = cleaned.replace(/[^\d]/g, '');
+        
+        // Return the actual full mathematical number
         return parseInt(cleaned) || 0;
     }
-
     // 2. SCROLL ELEMENT HELPER
     function scrollToCollectionTop() {
         const collectionSection = document.getElementById('collection');
