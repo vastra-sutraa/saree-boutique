@@ -83,58 +83,184 @@
         const PUBLISHED_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9_bCG4ULPB0KZ6km0y6HUSeqHU9KklIr9tyMlsE39xdTzFP-KMjq0WzqkSgKin5LInMC_TM0g95Qj/pubhtml";
         const SHEET_URL = PUBLISHED_URL.replace("/pubhtml", "/pub?output=csv");
 
-        let allSarees = [];
-        let currentCategory = 'all';
-
-        const grid = document.getElementById('saree-grid');
-        const buttonsContainer = document.getElementById('filterButtonsContainer');
-        // Setup initial default global state metrics matching slider boundaries
-        let maxPrice = 10000;
+        // Pagination & Master States Configuration
+    const ITEMS_PER_PAGE = 10;
+    let currentPage = 1;
+    let allSarees = [];
+    let filteredSarees = []; 
+    let currentCategory = 'all';
+    let maxPrice = 10000;
 
     // DOM Element Caches
+    const grid = document.getElementById('saree-grid');
+    const buttonsContainer = document.getElementById('filterButtonsContainer');
+    const paginationControls = document.getElementById('paginationControls');
     const maxRangeInput = document.getElementById('maxRangeInput');
     const maxPriceDisplay = document.getElementById('maxPriceDisplay');
-        // Controller function to process real-time single sliding movements
+    const backToTopBtn = document.getElementById("backToTopBtn");
+
+    // 1. HELPER FUNCTION: Extracts clean raw integers out of price fields
+    function cleanPrice(priceString) {
+        if (!priceString) return 0;
+        let cleaned = priceString.toString().split('.')[0];
+        cleaned = cleaned.replace(/[^\d]/g, '');
+        return parseInt(cleaned) || 0;
+    }
+
+    // 2. SCROLL ELEMENT HELPER
+    function scrollToCollectionTop() {
+        const collectionSection = document.getElementById('collection');
+        if (collectionSection) collectionSection.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // 3. GENERATE NAVIGATION BUTTONS
+    function buildPaginationControls() {
+        if (!paginationControls) return;
+        paginationControls.innerHTML = "";
+        const totalPages = Math.ceil(filteredSarees.length / ITEMS_PER_PAGE);
+        if (totalPages <= 1) return;
+
+        const prevBtn = document.createElement('button');
+        prevBtn.className = `page-btn navigation-btn ${currentPage === 1 ? 'disabled' : ''}`;
+        prevBtn.textContent = "« Prev";
+        prevBtn.disabled = currentPage === 1;
+        prevBtn.onclick = () => { if(currentPage > 1) { currentPage--; renderPageLayout(); scrollToCollectionTop(); } };
+        paginationControls.appendChild(prevBtn);
+
+        for (let i = 1; i <= totalPages; i++) {
+            const numBtn = document.createElement('button');
+            numBtn.className = `page-btn ${currentPage === i ? 'active' : ''}`;
+            numBtn.textContent = i;
+            numBtn.onclick = () => { currentPage = i; renderPageLayout(); scrollToCollectionTop(); };
+            paginationControls.appendChild(numBtn);
+        }
+
+        const nextBtn = document.createElement('button');
+        nextBtn.className = `page-btn navigation-btn ${currentPage === totalPages ? 'disabled' : ''}`;
+        nextBtn.textContent = "Next »";
+        nextBtn.disabled = currentPage === totalPages;
+        nextBtn.onclick = () => { if(currentPage < totalPages) { currentPage++; renderPageLayout(); scrollToCollectionTop(); } };
+        paginationControls.appendChild(nextBtn);
+    }
+
+    // 4. RENDER METHOD (Declared early so filtering functions can access it safely)
+    function renderPageLayout() {
+        if (!grid) return;
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        const pageItems = filteredSarees.slice(startIndex, endIndex);
+
+        grid.innerHTML = "";
+        if (pageItems.length === 0) {
+            grid.innerHTML = "<p class='no-results'>No matching sarees found within this criteria.</p>";
+            if (paginationControls) paginationControls.innerHTML = "";
+            return;
+        }
+
+        pageItems.forEach(saree => {
+            const formattedPrice = saree.price.toString().startsWith('₹') ? saree.price : `₹${saree.price}`;
+            const messageText = `Hello! I am interested in purchasing this saree:\n\n*Saree:* ${saree.name}\n*Category:* ${saree.category}\n*Price:* ${formattedPrice}\n\nIs this item currently available?`;
+            const encodedMessage = encodeURIComponent(messageText);
+            const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <div class="card-img-container">
+                    <img src="${saree.image}" alt="${saree.name}" class="saree-img" onclick="zoomImage(this)">
+                    <span class="category-badge">${saree.category}</span>
+                    <div class="zoom-overlay" onclick="this.previousElementSibling.click()">🔍 Click to Zoom</div>
+                </div>
+                <div class="card-info">
+                    <h3>${saree.name}</h3>
+                    <p class="price">${formattedPrice}</p>
+                    <a href="${whatsappUrl}" target="_blank" class="whatsapp-btn">
+                        💬 Order via WhatsApp
+                    </a>
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+
+        buildPaginationControls();
+    }
+
+    // 5. MASTER CENTRALIZED DATA FILTER LOGIC
+    function filterProducts() {
+        filteredSarees = allSarees.filter(saree => {
+            // Match Category
+            const matchesCategory = (currentCategory === 'all' || saree.category === currentCategory);
+            
+            // Match Search Input Text
+            const searchInputEl = document.getElementById('searchInput');
+            const searchQuery = searchInputEl ? searchInputEl.value.toLowerCase() : '';
+            const searchableText = `${saree.name} ${saree.category}`.toLowerCase();
+            const matchesSearch = searchableText.includes(searchQuery);
+            
+            // Match Cleaned Price Matrix
+            const currentItemPrice = cleanPrice(saree.price);
+            const matchesPrice = (maxPrice === 10000 ? true : currentItemPrice <= maxPrice);
+            
+            return matchesCategory && matchesSearch && matchesPrice;
+        });
+        
+        currentPage = 1; 
+        renderPageLayout(); // Works perfectly now because declaration is placed above!
+    }
+
+    // 6. SINGLE PRICE SLIDER CONTROLLER
     function handleSliderInput() {
+        if (!maxRangeInput) return;
         const maxVal = parseInt(maxRangeInput.value);
         maxPrice = maxVal;
 
         // Render dynamic text values to user interface layouts
-        maxPriceDisplay.textContent = maxVal === 10000 ? `₹${maxVal.toLocaleString('en-IN')}+` : `₹${maxVal.toLocaleString('en-IN')}`;
+        if (maxPriceDisplay) {
+            maxPriceDisplay.textContent = maxVal === 10000 ? `₹${maxVal.toLocaleString('en-IN')}+` : `₹${maxVal.toLocaleString('en-IN')}`;
+        }
 
-        currentPage = 1; 
         filterProducts();
     }
 
-        // Fetch data from Google Sheets
-        fetch(SHEET_URL)
-            .then(response => response.text())
-            .then(csvText => {
-                grid.innerHTML = ""; 
-                
-                const rows = csvText.split('\n').map(row => {
-                    return row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.replace(/^"|"$/g, '').trim());
-                });
+    // 7. CATEGORY SELECTION CONTROLLER
+    function selectCategory(category, buttonElement) {
+        currentCategory = category;
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        if (buttonElement) buttonElement.classList.add('active');
+        
+        filterProducts();
+    }
 
-                let categories = new Set();
+    // 8. DATA INITIALIZATION ENGINE
+    fetch(SHEET_URL)
+        .then(response => response.text())
+        .then(csvText => {
+            if (grid) grid.innerHTML = ""; 
+            allSarees = [];
+            
+            const rows = csvText.split('\n').map(row => {
+                return row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.replace(/^"|"$/g, '').trim());
+            });
 
-                // Start loop at 1 to skip headers
-                for (let i = 1; i < rows.length; i++) {
-                    const row = rows[i];
-                    if (!row[0]) continue; 
+            let categories = new Set();
 
-                    const saree = {
-                        name: row[0],
-                        price: row[1].startsWith('₹') ? row[1] : `₹${row[1]}`,
-                        image: row[2],
-                        category: row[3] || 'Uncategorized'
-                    };
+            for (let i = 1; i < rows.length; i++) {
+                const row = rows[i];
+                if (!row[0] || row[0].toLowerCase().includes("name")) continue; 
 
-                    allSarees.push(saree);
-                    categories.add(saree.category);
-                }
+                const saree = {
+                    name: row[0],
+                    price: row[1],
+                    image: row[2],
+                    category: row[3] || 'Uncategorized'
+                };
 
-                // Dynamically build category buttons based on actual folders found
+                allSarees.push(saree);
+                categories.add(saree.category);
+            }
+
+            // Dynamically build category buttons
+            if (buttonsContainer) {
                 categories.forEach(cat => {
                     const btn = document.createElement('button');
                     btn.className = 'filter-btn';
@@ -142,125 +268,42 @@
                     btn.onclick = function() { selectCategory(cat, btn); };
                     buttonsContainer.appendChild(btn);
                 });
-
-                displaySarees(allSarees);
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                grid.innerHTML = "<p>Error loading catalog.</p>";
-            });
-
-        // Function to render saree cards onto layout
-        function displaySarees(sareesList) {
-            grid.innerHTML = "";
-            if(sareesList.length === 0) {
-                grid.innerHTML = "<p class='no-results'>No matching sarees found.</p>";
-                return;
             }
 
-            sareesList.forEach(saree => {
-                const messageText = `Hello! I am interested in purchasing this saree:\n\n*Saree:* ${saree.name}\n*Category:* ${saree.category}\n*Price:* ${saree.price}\n\nIs this item currently available?`;
-                const encodedMessage = encodeURIComponent(messageText);
-                const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+            // Run initial display setup
+            handleSliderInput(); 
+        })
+        .catch(error => {
+            console.error('Sheet Loading Error:', error);
+            if (grid) grid.innerHTML = "<p>Error loading boutique catalog.</p>";
+        });
 
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div class="card-img-container">
-                        <img src="${saree.image}" alt="${saree.name}" class="saree-img" onclick="zoomImage(this)">
-                        <span class="category-badge">${saree.category}</span>
-                        <div class="zoom-overlay" onclick="this.previousElementSibling.click()">🔍 Click to Zoom</div>
-                    </div>
-                    <div class="card-info">
-                        <h3>${saree.name}</h3>
-                        <p class="price">${saree.price}</p>
-                        <a href="${whatsappUrl}" target="_blank" class="whatsapp-btn">
-                            💬 Order via WhatsApp
-                        </a>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+    // 9. WINDOW SCROLL LISTENER & MODAL OVERLAYS
+    window.onscroll = function() {
+        if (!backToTopBtn) return;
+        if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+            backToTopBtn.style.display = "block";
+        } else {
+            backToTopBtn.style.display = "none";
         }
+    };
 
-        // Category Tab selection controller
-        function selectCategory(category, buttonElement) {
-            currentCategory = category;
-            
-            // Toggle active button style classes
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            buttonElement.classList.add('active');
-            
-            filterProducts();
-        }
-
-        // Master combined Filter (Combines Category selection + Search bar queries)
-        function filterProducts() {
-    // 1. Get the current search text query safely
-    const searchInputEl = document.getElementById('searchInput');
-    const searchQuery = searchInputEl ? searchInputEl.value.toLowerCase() : '';
-    
-    // 2. Read the slider value safely
-    const maxRangeInputEl = document.getElementById('maxRangeInput');
-    const maxPrice = maxRangeInputEl ? parseInt(maxRangeInputEl.value) : 30000;
-
-    filteredSarees = allSarees.filter(saree => {
-        // Match Category
-        const matchesCategory = (currentCategory === 'all' || saree.category === currentCategory);
+    function zoomImage(imgElement) {
+        const modal = document.getElementById("imageModal");
+        const modalImg = document.getElementById("modalImg");
+        const captionText = document.getElementById("caption");
         
-        // Match Search Text
-        const searchableText = `${saree.name} ${saree.category}`.toLowerCase();
-        const matchesSearch = searchableText.includes(searchQuery);
-        
-        // Match Price: Cleans text like "₹14,500" into a raw number 14500
-        let rawPriceText = saree.price ? saree.price.toString() : '0';
-        const rawNumericPrice = parseInt(rawPriceText.replace(/[^\d]/g, '')) || 0;
-        
-        // If the slider is at max (30,000), treat it as unlimited budget
-        const matchesPrice = (maxPrice === 30000 ? true : rawNumericPrice <= maxPrice);
-        
-        return matchesCategory && matchesSearch && matchesPrice;
-    });
-    
-    currentPage = 1; 
-    renderPageLayout();
-}
-// Force the slider text and track to render properly on page load
-window.addEventListener('DOMContentLoaded', () => {
-    const maxRangeInputEl = document.getElementById('maxRangeInput');
-    if (maxRangeInputEl) {
-        handleSliderInput();
-    }
-});
-        // Zoom System Functions
-        function zoomImage(imgElement) {
-            const modal = document.getElementById("imageModal");
-            const modalImg = document.getElementById("modalImg");
-            const captionText = document.getElementById("caption");
-            
+        if (modal && modalImg) {
             modal.style.display = "block";
             modalImg.src = imgElement.src;
-            captionText.innerHTML = imgElement.alt;
+            if (captionText) captionText.innerHTML = imgElement.alt;
         }
+    }
 
-        function closeModal() {
-            document.getElementById("imageModal").style.display = "none";
-        }
-  // Get the button element
-const backToTopBtn = document.getElementById("backToTopBtn");
-
-//window.onscroll = function() {
-  //  if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
-    //    backToTopBtn.style.display = "block";
-    //} else {
-      //  backToTopBtn.style.display = "none";
-    //}
-//}
-
-function scrollToTop() {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
+    function closeModal() {
+        const modal = document.getElementById("imageModal");
+        if (modal) modal.style.display = "none";
+    }
     </script>
 <button id="backToTopBtn" title="Go to top" onclick="scrollToTop()">▲</button>
 </body>
