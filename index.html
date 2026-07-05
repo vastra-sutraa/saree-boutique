@@ -197,8 +197,8 @@
             const matchesSearch = searchableText.includes(searchQuery);
             
             // Match Cleaned Price Matrix
-            const currentItemPrice = cleanPrice(saree.price);
-            const matchesPrice = (maxPrice === 10000 ? true : currentItemPrice <= maxPrice);
+         //   const currentItemPrice = cleanPrice(saree.price);
+           // const matchesPrice = (maxPrice === 10000 ? true : currentItemPrice <= maxPrice);
             
             return matchesCategory && matchesSearch && matchesPrice;
         });
@@ -208,18 +208,18 @@
     }
 
     // 6. SINGLE PRICE SLIDER CONTROLLER
-    function handleSliderInput() {
-        if (!maxRangeInput) return;
-        const maxVal = parseInt(maxRangeInput.value);
-        maxPrice = maxVal;
+//    function handleSliderInput() {
+  //      if (!maxRangeInput) return;
+    //    const maxVal = parseInt(maxRangeInput.value);
+      //  maxPrice = maxVal;
 
         // Render dynamic text values to user interface layouts
-        if (maxPriceDisplay) {
-            maxPriceDisplay.textContent = maxVal === 10000 ? `₹${maxVal.toLocaleString('en-IN')}+` : `₹${maxVal.toLocaleString('en-IN')}`;
-        }
+       // if (maxPriceDisplay) {
+         //   maxPriceDisplay.textContent = maxVal === 10000 ? `₹${maxVal.toLocaleString('en-IN')}+` : `₹${maxVal.toLocaleString('en-IN')}`;
+        //}
 
-        filterProducts();
-    }
+        //filterProducts();
+    //}
 
     // 7. CATEGORY SELECTION CONTROLLER
     function selectCategory(category, buttonElement) {
