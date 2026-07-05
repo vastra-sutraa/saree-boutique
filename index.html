@@ -176,28 +176,68 @@
             buildPaginationControls();
         }
 
-        // 5. MASTER CENTRALIZED DATA FILTER LOGIC
-        function filterProducts() {
-            filteredSarees = allSarees.filter(saree => {
-                // Match Category
-                const matchesCategory = (currentCategory === 'all' || saree.category === currentCategory);
-                
-                // Match Search Input Text
-                const searchInputEl = document.getElementById('searchInput');
-                const searchQuery = searchInputEl ? searchInputEl.value.toLowerCase() : '';
-                const searchableText = `${saree.name} ${saree.category}`.toLowerCase();
-                const matchesSearch = searchableText.includes(searchQuery);
-                
-                // Match Cleaned Price Matrix
-                const currentItemPrice = cleanPrice(saree.price);
-                const matchesPrice = (maxPrice === 10000 ? true : currentItemPrice <= maxPrice);
-                
-                return matchesCategory && matchesSearch && matchesPrice;
-            });
+      // 5. MASTER CENTRALIZED DATA FILTER LOGIC (With Dynamic Category Hiding)
+    function filterProducts() {
+        // --- Phase 1: Filter the Sarees based on Search and Price Slider ---
+        filteredSarees = allSarees.filter(saree => {
+            // Match Search Input Text
+            const searchInputEl = document.getElementById('searchInput');
+            const searchQuery = searchInputEl ? searchInputEl.value.toLowerCase() : '';
+            const searchableText = `${saree.name} ${saree.category}`.toLowerCase();
+            const matchesSearch = searchableText.includes(searchQuery);
             
-            currentPage = 1; 
-            renderPageLayout();
+            // Match Cleaned Price Matrix
+            const currentItemPrice = cleanPrice(saree.price);
+            const matchesPrice = (maxPrice === 10000 ? true : currentItemPrice <= maxPrice);
+            
+            return matchesSearch && matchesPrice;
+        });
+
+        // --- Phase 2: Find which categories still have sarees under this budget ---
+        let availableCategories = new Set();
+        filteredSarees.forEach(saree => {
+            if (saree.category) {
+                availableCategories.add(saree.category);
+            }
+        });
+
+        // --- Phase 3: Redraw the Category Buttons based on current availability ---
+        if (buttonsContainer) {
+            buttonsContainer.innerHTML = '';
+            
+            // Create the "All Categories" button
+            const allBtn = document.createElement('button');
+            allBtn.className = `filter-btn ${currentCategory === 'all' ? 'active' : ''}`;
+            allBtn.textContent = 'All Categories';
+            allBtn.onclick = function() { selectCategory('all', allBtn); };
+            buttonsContainer.appendChild(allBtn);
+
+            // Create buttons only for categories that have items left under this budget
+            availableCategories.forEach(cat => {
+                const btn = document.createElement('button');
+                btn.className = `filter-btn ${currentCategory === cat ? 'active' : ''}`;
+                btn.textContent = cat;
+                btn.onclick = function() { selectCategory(cat, btn); };
+                buttonsContainer.appendChild(btn);
+            });
         }
+
+        // --- Phase 4: Final filter for the active chosen category view ---
+        if (currentCategory !== 'all') {
+            // If the user's previously selected category is now hidden by the budget slider, 
+            // reset their active category tab back to 'all' safely
+            if (!availableCategories.has(currentCategory)) {
+                currentCategory = 'all';
+                // Rerun immediately to highlight the "All Categories" tab correctly
+                return filterProducts();
+            }
+            
+            filteredSarees = filteredSarees.filter(saree => saree.category === currentCategory);
+        }
+        
+        currentPage = 1; 
+        renderPageLayout();
+    }
 
         // 6. SINGLE PRICE SLIDER CONTROLLER
         function handleSliderInput() {
@@ -214,15 +254,23 @@
         }
 
         // 7. CATEGORY SELECTION CONTROLLER
-        function selectCategory(category, buttonElement) {
-            currentCategory = category;
-            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-            if (buttonElement) buttonElement.classList.add('active');
-            
+    function selectCategory(category, buttonElement) {
+        currentCategory = category;
+        
+        // Update styling instantly across the dynamically redrawn buttons
+        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+        if (buttonElement) buttonElement.classList.add('active');
+        
+        // Slices dataset correctly for rendering layout screens
+        if (currentCategory === 'all') {
+            filterProducts();
+        } else {
+            // If filtering an explicit tab, reuse master processor constraints
             filterProducts();
         }
+    }
 
-        // 8. DATA INITIALIZATION ENGINE (Cleans line breaks & maps array elements)
+        // 8. DATA INITIALIZATION ENGINE
         fetch(SHEET_URL)
             .then(response => response.text())
             .then(csvText => {
@@ -230,7 +278,6 @@
                 allSarees = [];
                 
                 const lines = csvText.split(/\r?\n/); 
-                let categories = new Set();
 
                 for (let i = 1; i < lines.length; i++) {
                     if (!lines[i].trim()) continue; 
@@ -249,40 +296,15 @@
                     };
 
                     allSarees.push(saree);
-                    if (saree.category) {
-                        categories.add(saree.category);
-                    }
                 }
 
-                // Build category row safely
-                if (buttonsContainer) {
-                    buttonsContainer.innerHTML = '<button class="filter-btn active" onclick="selectCategory(\'all\', this)">All Categories</button>';
-                    categories.forEach(cat => {
-                        const btn = document.createElement('button');
-                        btn.className = 'filter-btn';
-                        btn.textContent = cat;
-                        btn.onclick = function() { selectCategory(cat, btn); };
-                        buttonsContainer.appendChild(btn);
-                    });
-                }
-
-                // Fire initial engine layout display
+                // Fire initial engine layout display (which will dynamically draw the category buttons too!)
                 handleSliderInput(); 
             })
             .catch(error => {
                 console.error('Sheet Loading Error:', error);
                 if (grid) grid.innerHTML = "<p>Error loading boutique catalog.</p>";
             });
-
-        // 9. WINDOW SCROLL LISTENER & MODAL OVERLAYS
-        window.onscroll = function() {
-            if (!backToTopBtn) return;
-            if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
-                backToTopBtn.style.display = "block";
-            } else {
-                backToTopBtn.style.display = "none";
-            }
-        };
 
         function zoomImage(imgElement) {
             const modal = document.getElementById("imageModal");
