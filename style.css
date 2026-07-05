@@ -453,3 +453,80 @@ footer {
     border-color: #e0e0e0;
     color: #bbb;
 }
+/* ==========================================================================
+   12. Premium Responsive Single Price Range Slider Layouts
+   ========================================================================== */
+.price-slider-container {
+    width: 100%;
+    max-width: 400px;
+    background: #fff;
+    padding: 1.2rem;
+    border-radius: 16px;
+    border: 1px solid #eae0d5;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.02);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.slider-label {
+    font-family: 'Poppins', sans-serif;
+    font-size: 0.85rem;
+    color: #888;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 0.2rem;
+}
+
+.price-input-display {
+    font-family: 'Poppins', sans-serif;
+    font-size: 1.35rem;
+    font-weight: 600;
+    color: #800020; /* Brand Burgundy Accent */
+    margin-bottom: 1rem;
+}
+
+.slider-track-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+.slider-track-wrapper input[type="range"] {
+    width: 100%;
+    height: 6px;
+    background: #e9ecef;
+    border-radius: 5px;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+/* Webkit browser slider handle designs */
+.slider-track-wrapper input[type="range"]::-webkit-slider-thumb {
+    height: 20px;
+    width: 20px;
+    border-radius: 50%;
+    background: #800020;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    -webkit-appearance: none;
+    transition: transform 0.1s ease;
+}
+
+.slider-track-wrapper input[type="range"]::-webkit-slider-thumb:hover {
+    transform: scale(1.2);
+}
+
+/* Firefox compatibility adjustments */
+.slider-track-wrapper input[type="range"]::-moz-range-thumb {
+    height: 16px;
+    width: 16px;
+    border-radius: 50%;
+    background: #800020;
+    border: 2px solid #fff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+    transition: transform 0.1s ease;
+}
