@@ -88,6 +88,23 @@
 
         const grid = document.getElementById('saree-grid');
         const buttonsContainer = document.getElementById('filterButtonsContainer');
+        // Setup initial default global state metrics matching slider boundaries
+        let maxPrice = 10000;
+
+    // DOM Element Caches
+    const maxRangeInput = document.getElementById('maxRangeInput');
+    const maxPriceDisplay = document.getElementById('maxPriceDisplay');
+        // Controller function to process real-time single sliding movements
+    function handleSliderInput() {
+        const maxVal = parseInt(maxRangeInput.value);
+        maxPrice = maxVal;
+
+        // Render dynamic text values to user interface layouts
+        maxPriceDisplay.textContent = maxVal === 10000 ? `₹${maxVal.toLocaleString('en-IN')}+` : `₹${maxVal.toLocaleString('en-IN')}`;
+
+        currentPage = 1; 
+        filterProducts();
+    }
 
         // Fetch data from Google Sheets
         fetch(SHEET_URL)
@@ -181,13 +198,28 @@
         function filterProducts() {
             const searchQuery = document.getElementById('searchInput').value.toLowerCase();
             
-            const filtered = allSarees.filter(saree => {
-                const matchesCategory = (currentCategory === 'all' || saree.category === currentCategory);
-                const matchesSearch = saree.name.toLowerCase().includes(searchQuery) || saree.category.toLowerCase().includes(searchQuery);
-                return matchesCategory && matchesSearch;
-            });
+         //   const filtered = allSarees.filter(saree => {
+           //     const matchesCategory = (currentCategory === 'all' || saree.category === currentCategory);
+             //   const matchesSearch = saree.name.toLowerCase().includes(searchQuery) || saree.category.toLowerCase().includes(searchQuery);
+               // return matchesCategory && matchesSearch;
+
+            filteredSarees = allSarees.filter(saree => {
+            const matchesCategory = (currentCategory === 'all' || saree.category === currentCategory);
             
-            displaySarees(filtered);
+            const searchableText = `${saree.name} ${saree.category}`.toLowerCase();
+            const matchesSearch = searchableText.includes(searchQuery);
+            
+            // Extract numbers safely from price strings (e.g., "₹14,500" -> 14500)
+            const rawNumericPrice = parseInt(saree.price.replace(/[^\d]/g, '')) || 0;
+            
+            // Match slider upper bound; if max slider is at 30,000, treat it as unlimited budget
+            const matchesPrice = (maxPrice === 10000 ? true : rawNumericPrice <= maxPrice);
+            
+            return matchesCategory && matchesSearch && matchesPrice;
+            });
+            currentPage = 1; 
+            renderPageLayout();
+          //  displaySarees(filtered);
         }
 
         // Zoom System Functions
