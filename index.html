@@ -3,16 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- Alternative formats for better browser support -->
-    <link rel="icon" type="image/x-icon" href="vsLogo.jpeg">
-    <title>Vastra Sutraa | Saree Boutique</title>
-    <link rel="stylesheet" href="style2.css">
+    <title>Vastra Sutraa | Premium Saree Boutique</title>
+    <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
 </head>
 <body>
 
     <header>
-        <div class="logo"><img src="images/vsLogo.jpeg" alt="Logo" style="height:100px; vertical-align:middle;">Vastra Sutraa</div>
+        <div class="logo">Vastra Sutraa</div>
         <nav>
             <a href="#home">Home</a>
             <a href="#collection">Collection</a>
@@ -27,329 +25,281 @@
         </div>
     </section>
 
-
-    <!-- Filter & Search Toolbar Section -->
     <section id="collection" class="collection">
         <h2>Our Live Collection</h2>
         
-   <!--     <div class="search-filter-wrapper">
+        <div class="search-filter-wrapper">
             <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Search sarees by name or category..." onkeyup="filterProducts()">
+                <input type="text" id="searchInput" placeholder="Search sarees by name or details..." onkeyup="filterProducts()">
+            </div>
+
+            <div class="price-slider-container">
+                <span class="slider-label">Maximum Budget</span>
+                <div class="price-input-display">
+                    <span id="maxPriceDisplay">₹10,000+</span>
+                </div>
+                <div class="slider-track-wrapper">
+                    <input type="range" id="maxRangeInput" min="1000" max="10000" value="10000" step="500" oninput="handleSliderInput()">
+                </div>
             </div>
             
-            <div class="filter-buttons" id="filterButtonsContainer">
-                <button class="filter-btn active" onclick="selectCategory('all', this)">All</button>
-            </div>
-        </div>
-        
-        <!-- The Main Saree Layout Grid 
-        <div class="grid" id="saree-grid">Loading latest sarees...</div>-->
-     <div class="search-filter-wrapper">
-            <div class="search-box">
-                <input type="text" id="searchInput" placeholder="Search sarees by name or description..." onkeyup="filterProducts()">
-            </div>
-                                
             <div class="filter-buttons" id="filterButtonsContainer">
                 <button class="filter-btn active" onclick="selectCategory('all', this)">All Categories</button>
             </div>
         </div>
+        
         <div class="grid" id="saree-grid">Loading latest sarees...</div>
 
-          
+        <div class="pagination-container" id="paginationControls"></div>
     </section>
 
     <div id="imageModal" class="modal" onclick="closeModal()">
-        <span class="close-modal">&times;</span>
+        <span class="close-modal">×</span>
         <img class="modal-content" id="modalImg">
         <div id="caption"></div>
     </div>
 
+    <button id="backToTopBtn" title="Go to top" onclick="window.scrollTo({ top: 0, behavior: 'smooth' })">▲</button>
+
     <footer>
-        <p>&copy; 2026 Vastra Sutraa Boutique. All Rights Reserved. </p>
-        <p>&copy; Contact : vastrasutraa26@gmail.com for bulk enquiries</p>
+        <p>© 2026 Vastra Sutraa Boutique. All Rights Reserved.</p>
     </footer>
+
     <script>
         const WHATSAPP_NUMBER = "919836409757"; 
         const PUBLISHED_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQ9_bCG4ULPB0KZ6km0y6HUSeqHU9KklIr9tyMlsE39xdTzFP-KMjq0WzqkSgKin5LInMC_TM0g95Qj/pubhtml";
         const SHEET_URL = PUBLISHED_URL.replace("/pubhtml", "/pub?output=csv");
 
         // Pagination & Master States Configuration
-    const ITEMS_PER_PAGE = 10;
-    let currentPage = 1;
-    let allSarees = [];
-    let filteredSarees = []; 
-    let currentCategory = 'all';
-    let maxPrice = 10000;
+        const ITEMS_PER_PAGE = 10;
+        let currentPage = 1;
+        let allSarees = [];
+        let filteredSarees = []; 
+        let currentCategory = 'all';
+        let maxPrice = 10000;
 
-    // DOM Element Caches
-    const grid = document.getElementById('saree-grid');
-    const buttonsContainer = document.getElementById('filterButtonsContainer');
-    const paginationControls = document.getElementById('paginationControls');
-    const maxRangeInput = document.getElementById('maxRangeInput');
-    const maxPriceDisplay = document.getElementById('maxPriceDisplay');
-    const backToTopBtn = document.getElementById("backToTopBtn");
+        // DOM Element Caches
+        const grid = document.getElementById('saree-grid');
+        const buttonsContainer = document.getElementById('filterButtonsContainer');
+        const paginationControls = document.getElementById('paginationControls');
+        const maxRangeInput = document.getElementById('maxRangeInput');
+        const maxPriceDisplay = document.getElementById('maxPriceDisplay');
+        const backToTopBtn = document.getElementById("backToTopBtn");
 
-    // 1. HELPER FUNCTION: Extracts clean raw integers out of price fields
-   // 1. HELPER FUNCTION: Extracts clean raw integers out of price fields safely
-    function cleanPrice(priceString) {
-        if (!priceString) return 0;
-        
-        // Convert to string and force remove any currency symbols or commas first
-        let cleaned = priceString.toString().replace(/,/g, ''); 
-        
-        // If there is a decimal dot (e.g., 1500.00), split and drop the paisa decimals
-        cleaned = cleaned.split('.')[0];
-        
-        // Strip out any remaining non-numeric characters (like ₹ or spaces)
-        cleaned = cleaned.replace(/[^\d]/g, '');
-        
-        // Return the actual full mathematical number
-        return parseInt(cleaned) || 0;
-    }
-    // 2. SCROLL ELEMENT HELPER
-    function scrollToCollectionTop() {
-        const collectionSection = document.getElementById('collection');
-        if (collectionSection) collectionSection.scrollIntoView({ behavior: 'smooth' });
-    }
-
-    // 3. GENERATE NAVIGATION BUTTONS
-    function buildPaginationControls() {
-        if (!paginationControls) return;
-        paginationControls.innerHTML = "";
-        const totalPages = Math.ceil(filteredSarees.length / ITEMS_PER_PAGE);
-        if (totalPages <= 1) return;
-
-        const prevBtn = document.createElement('button');
-        prevBtn.className = `page-btn navigation-btn ${currentPage === 1 ? 'disabled' : ''}`;
-        prevBtn.textContent = "« Prev";
-        prevBtn.disabled = currentPage === 1;
-        prevBtn.onclick = () => { if(currentPage > 1) { currentPage--; renderPageLayout(); scrollToCollectionTop(); } };
-        paginationControls.appendChild(prevBtn);
-
-        for (let i = 1; i <= totalPages; i++) {
-            const numBtn = document.createElement('button');
-            numBtn.className = `page-btn ${currentPage === i ? 'active' : ''}`;
-            numBtn.textContent = i;
-            numBtn.onclick = () => { currentPage = i; renderPageLayout(); scrollToCollectionTop(); };
-            paginationControls.appendChild(numBtn);
+        // 1. HELPER FUNCTION: Extracts clean raw integers out of messy price fields safely
+        function cleanPrice(priceString) {
+            if (!priceString) return 0;
+            // Convert to string and force remove any currency commas first
+            let cleaned = priceString.toString().replace(/,/g, ''); 
+            // Drop paisa decimals if they exist
+            cleaned = cleaned.split('.')[0];
+            // Strip out any remaining text characters
+            cleaned = cleaned.replace(/[^\d]/g, '');
+            return parseInt(cleaned) || 0;
         }
 
-        const nextBtn = document.createElement('button');
-        nextBtn.className = `page-btn navigation-btn ${currentPage === totalPages ? 'disabled' : ''}`;
-        nextBtn.textContent = "Next »";
-        nextBtn.disabled = currentPage === totalPages;
-        nextBtn.onclick = () => { if(currentPage < totalPages) { currentPage++; renderPageLayout(); scrollToCollectionTop(); } };
-        paginationControls.appendChild(nextBtn);
-    }
-
-    // 4. RENDER METHOD (Declared early so filtering functions can access it safely)
-    function renderPageLayout() {
-        if (!grid) return;
-        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-        const endIndex = startIndex + ITEMS_PER_PAGE;
-        const pageItems = filteredSarees.slice(startIndex, endIndex);
-
-        grid.innerHTML = "";
-        if (pageItems.length === 0) {
-            grid.innerHTML = "<p class='no-results'>No matching sarees found within this criteria.</p>";
-            if (paginationControls) paginationControls.innerHTML = "";
-            return;
+        // 2. SCROLL ELEMENT HELPER
+        function scrollToCollectionTop() {
+            const collectionSection = document.getElementById('collection');
+            if (collectionSection) collectionSection.scrollIntoView({ behavior: 'smooth' });
         }
 
-        pageItems.forEach(saree => {
-            const formattedPrice = saree.price.toString().startsWith('₹') ? saree.price : `₹${saree.price}`;
-            const messageText = `Hello! I am interested in purchasing this saree:\n\n*Saree:* ${saree.name}\n*Category:* ${saree.category}\n*Price:* ${formattedPrice}\n\nIs this item currently available?`;
-            const encodedMessage = encodeURIComponent(messageText);
-            const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+        // 3. GENERATE NAVIGATION BUTTONS
+        function buildPaginationControls() {
+            if (!paginationControls) return;
+            paginationControls.innerHTML = "";
+            const totalPages = Math.ceil(filteredSarees.length / ITEMS_PER_PAGE);
+            if (totalPages <= 1) return;
 
-            const card = document.createElement('div');
-            card.className = 'card';
-            card.innerHTML = `
-                <div class="card-img-container">
-                    <img src="${saree.image}" alt="${saree.name}" class="saree-img" onclick="zoomImage(this)">
-                    <span class="category-badge">${saree.category}</span>
-                    <div class="zoom-overlay" onclick="this.previousElementSibling.click()">🔍 Click to Zoom</div>
-                </div>
-                <div class="card-info">
-                    <h3>${saree.name}</h3>
-                    <p class="price">${formattedPrice}</p>
-                    <a href="${whatsappUrl}" target="_blank" class="whatsapp-btn">
-                        💬 Order via WhatsApp
-                    </a>
-                </div>
-            `;
-            grid.appendChild(card);
-        });
+            const prevBtn = document.createElement('button');
+            prevBtn.className = `page-btn navigation-btn ${currentPage === 1 ? 'disabled' : ''}`;
+            prevBtn.textContent = "« Prev";
+            prevBtn.disabled = currentPage === 1;
+            prevBtn.onclick = () => { if(currentPage > 1) { currentPage--; renderPageLayout(); scrollToCollectionTop(); } };
+            paginationControls.appendChild(prevBtn);
 
-        //buildPaginationControls();
-    }
+            for (let i = 1; i <= totalPages; i++) {
+                const numBtn = document.createElement('button');
+                numBtn.className = `page-btn ${currentPage === i ? 'active' : ''}`;
+                numBtn.textContent = i;
+                numBtn.onclick = () => { currentPage = i; renderPageLayout(); scrollToCollectionTop(); };
+                paginationControls.appendChild(numBtn);
+            }
 
-    // 5. MASTER CENTRALIZED DATA FILTER LOGIC
-    function filterProducts() {
-        filteredSarees = allSarees.filter(saree => {
-            // Match Category
-            const matchesCategory = (currentCategory === 'all' || saree.category === currentCategory);
+            const nextBtn = document.createElement('button');
+            nextBtn.className = `page-btn navigation-btn ${currentPage === totalPages ? 'disabled' : ''}`;
+            nextBtn.textContent = "Next »";
+            nextBtn.disabled = currentPage === totalPages;
+            nextBtn.onclick = () => { if(currentPage < totalPages) { currentPage++; renderPageLayout(); scrollToCollectionTop(); } };
+            paginationControls.appendChild(nextBtn);
+        }
+
+        // 4. RENDER METHOD
+        function renderPageLayout() {
+            if (!grid) return;
+            const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+            const endIndex = startIndex + ITEMS_PER_PAGE;
+            const pageItems = filteredSarees.slice(startIndex, endIndex);
+
+            grid.innerHTML = "";
+            if (pageItems.length === 0) {
+                grid.innerHTML = "<p class='no-results'>No matching sarees found within this criteria.</p>";
+                if (paginationControls) paginationControls.innerHTML = "";
+                return;
+            }
+
+            pageItems.forEach(saree => {
+                const formattedPrice = saree.price.toString().startsWith('₹') ? saree.price : `₹${saree.price}`;
+                const messageText = `Hello! I am interested in purchasing this saree:\n\n*Saree:* ${saree.name}\n*Category:* ${saree.category}\n*Price:* ${formattedPrice}\n\nIs this item currently available?`;
+                const encodedMessage = encodeURIComponent(messageText);
+                const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`;
+
+                const card = document.createElement('div');
+                card.className = 'card';
+                card.innerHTML = `
+                    <div class="card-img-container">
+                        <img src="${saree.image}" alt="${saree.name}" class="saree-img" onclick="zoomImage(this)">
+                        <span class="category-badge">${saree.category}</span>
+                        <div class="zoom-overlay" onclick="this.previousElementSibling.click()">🔍 Click to Zoom</div>
+                    </div>
+                    <div class="card-info">
+                        <h3>${saree.name}</h3>
+                        <p class="price">${formattedPrice}</p>
+                        <a href="${whatsappUrl}" target="_blank" class="whatsapp-btn">
+                            💬 Order via WhatsApp
+                        </a>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            buildPaginationControls();
+        }
+
+        // 5. MASTER CENTRALIZED DATA FILTER LOGIC
+        function filterProducts() {
+            filteredSarees = allSarees.filter(saree => {
+                // Match Category
+                const matchesCategory = (currentCategory === 'all' || saree.category === currentCategory);
+                
+                // Match Search Input Text
+                const searchInputEl = document.getElementById('searchInput');
+                const searchQuery = searchInputEl ? searchInputEl.value.toLowerCase() : '';
+                const searchableText = `${saree.name} ${saree.category}`.toLowerCase();
+                const matchesSearch = searchableText.includes(searchQuery);
+                
+                // Match Cleaned Price Matrix
+                const currentItemPrice = cleanPrice(saree.price);
+                const matchesPrice = (maxPrice === 10000 ? true : currentItemPrice <= maxPrice);
+                
+                return matchesCategory && matchesSearch && matchesPrice;
+            });
             
-            // Match Search Input Text
-            const searchInputEl = document.getElementById('searchInput');
-            const searchQuery = searchInputEl ? searchInputEl.value.toLowerCase() : '';
-            const searchableText = `${saree.name} ${saree.category}`.toLowerCase();
-            const matchesSearch = searchableText.includes(searchQuery);
+            currentPage = 1; 
+            renderPageLayout();
+        }
+
+        // 6. SINGLE PRICE SLIDER CONTROLLER
+        function handleSliderInput() {
+            if (!maxRangeInput) return;
+            const maxVal = parseInt(maxRangeInput.value);
+            maxPrice = maxVal;
+
+            // Render dynamic text values to user interface layouts
+            if (maxPriceDisplay) {
+                maxPriceDisplay.textContent = maxVal === 10000 ? `₹${maxVal.toLocaleString('en-IN')}+` : `₹${maxVal.toLocaleString('en-IN')}`;
+            }
+
+            filterProducts();
+        }
+
+        // 7. CATEGORY SELECTION CONTROLLER
+        function selectCategory(category, buttonElement) {
+            currentCategory = category;
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+            if (buttonElement) buttonElement.classList.add('active');
             
-            // Match Cleaned Price Matrix
-         //   const currentItemPrice = cleanPrice(saree.price);
-           // const matchesPrice = (maxPrice === 10000 ? true : currentItemPrice <= maxPrice);
-            
-            return matchesCategory && matchesSearch && matchesPrice;
-        });
-        
-        currentPage = 1; 
-        renderPageLayout(); // Works perfectly now because declaration is placed above!
-    }
+            filterProducts();
+        }
 
-    // 6. SINGLE PRICE SLIDER CONTROLLER
-//    function handleSliderInput() {
-  //      if (!maxRangeInput) return;
-    //    const maxVal = parseInt(maxRangeInput.value);
-      //  maxPrice = maxVal;
+        // 8. DATA INITIALIZATION ENGINE (Cleans line breaks & maps array elements)
+        fetch(SHEET_URL)
+            .then(response => response.text())
+            .then(csvText => {
+                if (grid) grid.innerHTML = ""; 
+                allSarees = [];
+                
+                const lines = csvText.split(/\r?\n/); 
+                let categories = new Set();
 
-        // Render dynamic text values to user interface layouts
-       // if (maxPriceDisplay) {
-         //   maxPriceDisplay.textContent = maxVal === 10000 ? `₹${maxVal.toLocaleString('en-IN')}+` : `₹${maxVal.toLocaleString('en-IN')}`;
-        //}
+                for (let i = 1; i < lines.length; i++) {
+                    if (!lines[i].trim()) continue; 
 
-        //filterProducts();
-    //}
+                    const row = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => {
+                        return cell.replace(/^"|"$/g, '').trim(); 
+                    });
 
-    // 7. CATEGORY SELECTION CONTROLLER
-    function selectCategory(category, buttonElement) {
-        currentCategory = category;
-        document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-        if (buttonElement) buttonElement.classList.add('active');
-        
-        filterProducts();
-    }
+                    if (!row[0] || row[0].toLowerCase().includes("name")) continue; 
 
-    // 8. DATA INITIALIZATION ENGINE
-    fetch(SHEET_URL)
-        .then(response => response.text())
-        .then(csvText => {
-            if (grid) grid.innerHTML = ""; 
-            allSarees = [];
-            
-         // Split rows and filter out empty lines
-            const lines = csvText.split(/\r?\n/); 
-            
-            let categories = new Set();
+                    const saree = {
+                        name: row[0],
+                        price: row[1],
+                        image: row[2],
+                        category: row[3] ? row[3].trim() : 'Uncategorized' 
+                    };
 
-            for (let i = 1; i < lines.length; i++) {
-                if (!lines[i].trim()) continue; // Skip completely blank lines
-
-                // Parse columns splitting safely on commas
-                const row = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => {
-                    // Clean quotes and remove any hidden edge spaces or carriage returns (\r)
-                    return cell.replace(/^"|"$/g, '').trim(); 
-                });
-
-                if (!row[0] || row[0].toLowerCase().includes("name")) continue; 
-
-                const saree = {
-                    name: row[0],
-                    price: row[1],
-                    image: row[2],
-                    // .trim() here completely strips out the hidden line-break character!
-                    category: row[3] ? row[3].trim() : 'Uncategorized' 
-                };
-
-                allSarees.push(saree);
-                if (saree.category) {
-                    categories.add(saree.category);
+                    allSarees.push(saree);
+                    if (saree.category) {
+                        categories.add(saree.category);
+                    }
                 }
+
+                // Build category row safely
+                if (buttonsContainer) {
+                    buttonsContainer.innerHTML = '<button class="filter-btn active" onclick="selectCategory(\'all\', this)">All Categories</button>';
+                    categories.forEach(cat => {
+                        const btn = document.createElement('button');
+                        btn.className = 'filter-btn';
+                        btn.textContent = cat;
+                        btn.onclick = function() { selectCategory(cat, btn); };
+                        buttonsContainer.appendChild(btn);
+                    });
+                }
+
+                // Fire initial engine layout display
+                handleSliderInput(); 
+            })
+            .catch(error => {
+                console.error('Sheet Loading Error:', error);
+                if (grid) grid.innerHTML = "<p>Error loading boutique catalog.</p>";
+            });
+
+        // 9. WINDOW SCROLL LISTENER & MODAL OVERLAYS
+        window.onscroll = function() {
+            if (!backToTopBtn) return;
+            if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
+                backToTopBtn.style.display = "block";
+            } else {
+                backToTopBtn.style.display = "none";
             }
+        };
 
-            // Clear historical buttons and rebuild clean ones
-            if (buttonsContainer) {
-                buttonsContainer.innerHTML = '<button class="filter-btn active" onclick="selectCategory(\'all\', this)">All Categories</button>';
-                categories.forEach(cat => {
-                    const btn = document.createElement('button');
-                    btn.className = 'filter-btn';
-                    btn.textContent = cat;
-                    btn.onclick = function() { selectCategory(cat, btn); };
-                    buttonsContainer.appendChild(btn);
-                });
+        function zoomImage(imgElement) {
+            const modal = document.getElementById("imageModal");
+            const modalImg = document.getElementById("modalImg");
+            const captionText = document.getElementById("caption");
+            
+            if (modal && modalImg) {
+                modal.style.display = "block";
+                modalImg.src = imgElement.src;
+                if (captionText) captionText.innerHTML = imgElement.alt;
             }
-
-            console.log("Total Cleaned Sarees Loaded:", allSarees.length);
-            handleSliderInput(); // Run baseline setup layout
-        })
-        .catch(error => {
-            console.error('Sheet Loading Error:', error);
-            if (grid) grid.innerHTML = "<p>Error loading boutique catalog.</p>";
-        });
-
-            let categories = new Set();
-
-            for (let i = 1; i < rows.length; i++) {
-                const row = rows[i];
-                if (!row[0] || row[0].toLowerCase().includes("name")) continue; 
-
-                const saree = {
-                    name: row[0],
-                    price: row[1],
-                    image: row[2],
-                    category: row[3] || 'Uncategorized'
-                };
-
-                allSarees.push(saree);
-                categories.add(saree.category);
-            }
-
-            // Dynamically build category buttons
-            if (buttonsContainer) {
-                categories.forEach(cat => {
-                    const btn = document.createElement('button');
-                    btn.className = 'filter-btn';
-                    btn.textContent = cat;
-                    btn.onclick = function() { selectCategory(cat, btn); };
-                    buttonsContainer.appendChild(btn);
-                });
-            }
-
-            // Run initial display setup
-            //handleSliderInput(); 
-        })
-        .catch(error => {
-            console.error('Sheet Loading Error:', error);
-            if (grid) grid.innerHTML = "<p>Error loading boutique catalog.</p>";
-        });
-
-    // 9. WINDOW SCROLL LISTENER & MODAL OVERLAYS
-    window.onscroll = function() {
-        if (!backToTopBtn) return;
-        if (document.body.scrollTop > 300 || document.documentElement.scrollTop > 300) {
-            backToTopBtn.style.display = "block";
-        } else {
-            backToTopBtn.style.display = "none";
         }
-    };
 
-    function zoomImage(imgElement) {
-        const modal = document.getElementById("imageModal");
-        const modalImg = document.getElementById("modalImg");
-        const captionText = document.getElementById("caption");
-        
-        if (modal && modalImg) {
-            modal.style.display = "block";
-            modalImg.src = imgElement.src;
-            if (captionText) captionText.innerHTML = imgElement.alt;
+        function closeModal() {
+            const modal = document.getElementById("imageModal");
+            if (modal) modal.style.display = "none";
         }
-    }
-
-    function closeModal() {
-        const modal = document.getElementById("imageModal");
-        if (modal) modal.style.display = "none";
-    }
     </script>
-<button id="backToTopBtn" title="Go to top" onclick="scrollToTop()">▲</button>
 </body>
 </html>
