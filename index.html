@@ -237,9 +237,55 @@
             if (grid) grid.innerHTML = ""; 
             allSarees = [];
             
-            const rows = csvText.split('\n').map(row => {
-                return row.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => cell.replace(/^"|"$/g, '').trim());
-            });
+         // Split rows and filter out empty lines
+            const lines = csvText.split(/\r?\n/); 
+            
+            let categories = new Set();
+
+            for (let i = 1; i < lines.length; i++) {
+                if (!lines[i].trim()) continue; // Skip completely blank lines
+
+                // Parse columns splitting safely on commas
+                const row = lines[i].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(cell => {
+                    // Clean quotes and remove any hidden edge spaces or carriage returns (\r)
+                    return cell.replace(/^"|"$/g, '').trim(); 
+                });
+
+                if (!row[0] || row[0].toLowerCase().includes("name")) continue; 
+
+                const saree = {
+                    name: row[0],
+                    price: row[1],
+                    image: row[2],
+                    // .trim() here completely strips out the hidden line-break character!
+                    category: row[3] ? row[3].trim() : 'Uncategorized' 
+                };
+
+                allSarees.push(saree);
+                if (saree.category) {
+                    categories.add(saree.category);
+                }
+            }
+
+            // Clear historical buttons and rebuild clean ones
+            if (buttonsContainer) {
+                buttonsContainer.innerHTML = '<button class="filter-btn active" onclick="selectCategory(\'all\', this)">All Categories</button>';
+                categories.forEach(cat => {
+                    const btn = document.createElement('button');
+                    btn.className = 'filter-btn';
+                    btn.textContent = cat;
+                    btn.onclick = function() { selectCategory(cat, btn); };
+                    buttonsContainer.appendChild(btn);
+                });
+            }
+
+            console.log("Total Cleaned Sarees Loaded:", allSarees.length);
+            handleSliderInput(); // Run baseline setup layout
+        })
+        .catch(error => {
+            console.error('Sheet Loading Error:', error);
+            if (grid) grid.innerHTML = "<p>Error loading boutique catalog.</p>";
+        });
 
             let categories = new Set();
 
